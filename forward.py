@@ -2,6 +2,7 @@ import socket
 import sys
 import threading
 
+
 class PipeThread(threading.Thread):
     def __init__(self, source, target):
         threading.Thread.__init__(self)
@@ -19,36 +20,34 @@ class PipeThread(threading.Thread):
 
 
 class Forwarding(threading.Thread):
-    def __init__(self, port, targethost):
+    def __init__(self, port, targethost, targetport):
         threading.Thread.__init__(self)
 
         self.port = port
 
         self.targethost = targethost
 
-        #self.targetport = targetport
+        self.targetport = targetport
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.remote = socket.create_connection((targethost, targetport))
 
-        self.sock.bind((targethost,0))
+        self.local = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        _,self.targetport = self.sock.getsockname()
+        self.local.bind(("0.0.0.0", self.port))
 
-        self.sock.listen(10)
+        self.local.listen(10)
 
         print("local port:" + str(port) + " remote address:" + targethost + ":" + str(self.targetport))
 
     def run(self):
         while True:
-            client_fd, client_addr = self.sock.accept()
+            local, _ = self.local.accept()
 
-            target_fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            remote = socket.create_connection((self.targethost, self.targetport))
 
-            target_fd.connect(("", self.port))
+            PipeThread(local, remote).start()
 
-            PipeThread(target_fd, client_fd).start()
-
-            PipeThread(client_fd, target_fd).start()
+            PipeThread(remote, local).start()
 
 
 if __name__ == '__main__':
@@ -57,15 +56,10 @@ if __name__ == '__main__':
 
         targethost = sys.argv[2]
 
-        #targetport = int(sys.argv[3])
-        
-        #print(str(port)+" "+targethost+" "+str(targetport))
+        targetport = int(sys.argv[3])
 
-        Forwarding(port,targethost).start()
+        Forwarding(port, targethost, targetport).start()
 
     except (ValueError, IndexError):
-
-        print('Usage: %s port targethost' % sys.argv[0])
-
+        print('Usage: %s port targethost targetport' % sys.argv[0])
         sys.exit(1)
-
