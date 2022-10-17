@@ -20,10 +20,8 @@ class PipeThread(threading.Thread):
 
 
 class Forwarding(threading.Thread):
-    def __init__(self, port, targethost, targetport):
+    def __init__(self, targethost, targetport):
         threading.Thread.__init__(self)
-
-        self.port = port
 
         self.targethost = targethost
 
@@ -33,11 +31,12 @@ class Forwarding(threading.Thread):
 
         self.local = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        self.local.bind(("0.0.0.0", self.port))
+        self.local.bind(("0.0.0.0", 0))
 
         self.local.listen(10)
 
-        print("local port:" + str(port) + " remote address:" + targethost + ":" + str(self.targetport))
+        print("local port:" + str(self.local.getsockname()[1]) + " remote address:" + targethost + ":" + str(
+            self.targetport))
 
     def run(self):
         while True:
@@ -52,14 +51,12 @@ class Forwarding(threading.Thread):
 
 if __name__ == '__main__':
     try:
-        port = int(sys.argv[1])
+        targethost = sys.argv[1]
 
-        targethost = sys.argv[2]
+        targetport = int(sys.argv[2])
 
-        targetport = int(sys.argv[3])
-
-        Forwarding(port, targethost, targetport).start()
+        Forwarding(targethost, targetport).start()
 
     except (ValueError, IndexError):
-        print('Usage: %s port targethost targetport' % sys.argv[0])
+        print('Usage: %s targethost targetport' % sys.argv[0])
         sys.exit(1)
